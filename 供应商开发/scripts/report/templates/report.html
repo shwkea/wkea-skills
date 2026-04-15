@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>供应商开发报告</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f6f8;color:#1a1a2e;font-size:13px;line-height:1.5}
+a{color:#2563eb;text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── 顶栏 ── */
+.topbar{background:#fff;border-bottom:1px solid #e4e7ed;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.topbar-title{font-size:15px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:6px}
+.topbar-meta{font-size:11px;color:#9ca3af}
+
+/* ── 统计卡片 ── */
+.stats{display:flex;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid #e4e7ed}
+.stat{flex:1;text-align:center;padding:10px;border-radius:8px;background:#f8fafc;border:1px solid #e4e7ed}
+.stat-val{font-size:22px;font-weight:700;color:#1a1a2e}
+.stat-lbl{font-size:11px;color:#6b7280;margin-top:2px}
+.stat.green .stat-val{color:#059669}
+.stat.red .stat-val{color:#dc2626}
+.stat.orange .stat-val{color:#d97706}
+
+/* ── 主体 ── */
+.main{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+
+/* ── 产品区块 ── */
+.product-block{background:#fff;border-radius:10px;border:1px solid #e4e7ed;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.product-block-header{background:#f8fafc;padding:10px 16px;border-bottom:1px solid #e4e7ed;display:flex;justify-content:space-between;align-items:center}
+.product-block-title{font-size:14px;font-weight:700;color:#1a1a2e}
+.product-block-subtitle{font-size:11px;color:#6b7280}
+.product-block-body{display:flex;min-height:0}
+
+/* ── 产品信息侧栏 ── */
+.product-sidebar{width:300px;flex-shrink:0;border-right:1px solid #f0f0f0;padding:14px;overflow-y:auto;max-height:780px}
+.sidebar-section{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f3f4f6}
+.sidebar-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.sidebar-section-title{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.kv-row{display:flex;margin-bottom:4px;font-size:12px}
+.kv-label{width:80px;color:#9ca3af;flex-shrink:0;font-size:11px}
+.kv-value{flex:1;color:#1a1a2e;font-weight:500;word-break:break-all}
+.spec-table{width:100%;border-collapse:collapse;font-size:11px}
+.spec-table tr:nth-child(even) td{background:#f9fafb}
+.spec-table td{padding:3px 6px;border:1px solid #e4e7ed;vertical-align:top}
+.spec-table td:first-child{color:#6b7280;width:50%;white-space:nowrap}
+.spec-table td:last-child{color:#1a1a2e;font-weight:500}
+.img-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.img-grid img{width:100%;border-radius:6px;border:1px solid #e4e7ed;object-fit:cover;aspect-ratio:1;cursor:pointer;transition:.2s}
+.img-grid img:hover{transform:scale(1.03);border-color:#2563eb}
+.url-list{list-style:none;margin-top:4px}
+.url-list li{margin-bottom:3px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.url-list a{color:#2563eb}
+.badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;line-height:1.8}
+.badge-green{background:#d1fae5;color:#059669;border:1px solid #6ee7b7}
+.badge-orange{background:#fff7ed;color:#d97706;border:1px solid #fed7aa}
+.badge-red{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
+.badge-blue{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+.badge-gray{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+
+/* ── 供应商卡片区 ── */
+.supplier-area{flex:1;padding:14px;overflow-x:auto;min-width:0}
+.supplier-cards{display:flex;gap:12px;min-width:max-content;align-items:flex-start}
+.sc{width:360px;border:1px solid #e4e7ed;border-radius:8px;background:#fff;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.sc-header{padding:10px 12px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.sc-name{font-size:13px;font-weight:700;color:#1a1a2e;flex:1;line-height:1.3}
+.sc-badges{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.sc-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;flex:1}
+
+/* 卡片内分组 */
+.sc-section{border:1px solid #f0f0f0;border-radius:6px;overflow:hidden}
+.sc-section-title{font-size:10px;font-weight:700;color:#fff;padding:3px 8px;display:flex;align-items:center;gap:4px}
+.bg-blue{background:#2563eb}
+.bg-green{background:#059669}
+.bg-orange{background:#d97706}
+.bg-purple{background:#7c3aed}
+.bg-red{background:#dc2626}
+.bg-slate{background:#475569}
+.sc-section-body{padding:8px;display:flex;flex-direction:column;gap:3px}
+.sc-row{display:flex;font-size:11px;gap:4px;align-items:flex-start}
+.sc-lbl{width:72px;color:#9ca3af;flex-shrink:0;padding-top:1px}
+.sc-val{flex:1;color:#1a1a2e;word-break:break-all}
+.sc-val.price{color:#dc2626;font-weight:700;font-size:13px}
+.sc-val.delivery{color:#d97706;font-weight:600}
+.sc-val.text-sm{font-size:10px;color:#6b7280}
+
+/* 股东表 */
+.shareholder-list{font-size:11px}
+.shareholder-list .sh-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f3f4f6}
+.sh-name{color:#1a1a2e}
+.sh-ratio{color:#7c3aed;font-weight:600}
+
+/* 风险指示 */
+.risk-row{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0}
+.risk-item{display:flex;align-items:center;gap:3px;font-size:11px}
+.risk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:#059669}
+.dot-red{background:#dc2626}
+.dot-orange{background:#d97706}
+.dot-gray{background:#9ca3af}
+
+/* 认证标签 */
+.cert-tags{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0}
+.cert-tag{background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:4px;padding:1px 6px;font-size:10px}
+
+/* 网址区 */
+.url-group{padding:4px 0}
+.url-item{margin-bottom:3px;font-size:11px;display:flex;gap:4px;align-items:flex-start}
+.url-tag{background:#f3f4f6;color:#6b7280;border-radius:3px;padding:0 4px;font-size:10px;white-space:nowrap;flex-shrink:0}
+.url-link{color:#2563eb;word-break:break-all;line-height:1.3}
+
+/* 执行日志 */
+.exec-log-block{background:#fff;border-radius:10px;border:1px solid #e4e7ed;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.exec-log-header{background:#f8fafc;padding:10px 16px;border-bottom:1px solid #e4e7ed;font-size:13px;font-weight:700;color:#1a1a2e;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.exec-log-body{padding:12px 16px;max-height:280px;overflow-y:auto}
+.log-item{display:flex;gap:8px;margin-bottom:5px;font-size:11px;align-items:flex-start}
+.log-time{color:#9ca3af;flex-shrink:0;width:54px}
+.log-type{flex-shrink:0;width:48px}
+.log-msg{flex:1;color:#374151}
+.log-url{font-size:10px;color:#2563eb;display:block;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-type-search{color:#2563eb}
+.log-type-fetch{color:#7c3aed}
+.log-type-verify{color:#d97706}
+.log-type-download{color:#059669}
+.log-type-save{color:#0891b2}
+.log-type-error{color:#dc2626}
+.log-type-result{color:#059669;font-weight:700}
+
+/* 图片预览弹窗 */
+.img-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;justify-content:center;align-items:center}
+.img-modal.open{display:flex}
+.img-modal img{max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.img-modal-close{position:fixed;top:20px;right:24px;color:#fff;font-size:24px;cursor:pointer;opacity:.8}
+.img-modal-close:hover{opacity:1}
+
+/* footer */
+.footer{text-align:center;padding:12px;color:#9ca3af;font-size:11px}
+
+/* 响应式 */
+@media(max-width:900px){
+  .product-block-body{flex-direction:column}
+  .product-sidebar{width:100%;max-height:none;border-right:none;border-bottom:1px solid #f0f0f0}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">📋 供应商开发报告</div>
+  <div class="topbar-meta" id="headerMeta"></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-val" id="productCount">0</div><div class="stat-lbl">产品数量</div></div>
+  <div class="stat"><div class="stat-val" id="supplierCount">0</div><div class="stat-lbl">供应商总数</div></div>
+  <div class="stat green"><div class="stat-val" id="authCount">0</div><div class="stat-lbl">已授权</div></div>
+  <div class="stat orange"><div class="stat-val" id="pendingCount">0</div><div class="stat-lbl">待核实</div></div>
+</div>
+
+<div class="main" id="mainContent"></div>
+
+<div class="footer" id="footerTime"></div>
+
+<!-- 图片预览弹窗 -->
+<div class="img-modal" id="imgModal" onclick="closeModal()">
+  <span class="img-modal-close">✕</span>
+  <img id="modalImg" src="" alt="">
+</div>
+
+<script>
+const D = window.SUMMARY_DATA || null;
+const LOG = window.EXEC_LOG_DATA || null;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escAttr(s){ return String(s||'').replace(/"/g,'&quot;') }
+
+function riskLevel(s){
+  const lvl = (s.risk_level||'').toLowerCase();
+  if(lvl.includes('低')) return '<span class="badge badge-green">低风险</span>';
+  if(lvl.includes('高')) return '<span class="badge badge-red">高风险</span>';
+  if(lvl.includes('中')) return '<span class="badge badge-orange">中风险</span>';
+  return '';
+}
+
+function recBadge(s){
+  const r = (s.recommendation||'').toLowerCase();
+  if(r.includes('推荐')&&!r.includes('不')) return '<span class="badge badge-green">✓ 推荐</span>';
+  if(r.includes('不推荐')) return '<span class="badge badge-red">✗ 不推荐</span>';
+  return '';
+}
+
+function renderContactBlock(c){
+  if(!c) return '<span class="sc-val text-sm">暂无</span>';
+  const items = [];
+  if(c.name)   items.push(`<div class="sc-row"><span class="sc-lbl">联系人</span><span class="sc-val">${esc(c.name)}${c.title?` · <em style="color:#6b7280">${esc(c.title)}</em>`:''}</span></div>`);
+  if(c.phone)  items.push(`<div class="sc-row"><span class="sc-lbl">☎ 电话</span><span class="sc-val">${esc(c.phone)}</span></div>`);
+  if(c.mobile) items.push(`<div class="sc-row"><span class="sc-lbl">📱 手机</span><span class="sc-val">${esc(c.mobile)}</span></div>`);
+  if(c.email)  items.push(`<div class="sc-row"><span class="sc-lbl">✉ 邮箱</span><span class="sc-val"><a href="mailto:${escAttr(c.email)}">${esc(c.email)}</a></span></div>`);
+  if(c.wechat) items.push(`<div class="sc-row"><span class="sc-lbl">💬 微信</span><span class="sc-val">${esc(c.wechat)}</span></div>`);
+  if(c.qq)     items.push(`<div class="sc-row"><span class="sc-lbl">QQ</span><span class="sc-val">${esc(c.qq)}</span></div>`);
+  if(c.fax)    items.push(`<div class="sc-row"><span class="sc-lbl">传真</span><span class="sc-val">${esc(c.fax)}</span></div>`);
+  if(c.city||c.address) items.push(`<div class="sc-row"><span class="sc-lbl">📍 地址</span><span class="sc-val">${esc((c.city?c.city+' ':'')+c.address)}</span></div>`);
+  if(c.website)items.push(`<div class="sc-row"><span class="sc-lbl">🌐 官网</span><span class="sc-val"><a href="${escAttr(c.website)}" target="_blank">${esc(c.website)}</a></span></div>`);
+  return items.length ? items.join('') : '<div class="sc-row"><span class="sc-val text-sm">暂无联系方式</span></div>';
+}
+
+function renderQccBlock(q){
+  if(!q) return '<div class="sc-row"><span class="sc-val text-sm">暂无企查查信息</span></div>';
+  const rows = [];
+  if(q.full_name)         rows.push(`<div class="sc-row"><span class="sc-lbl">工商全称</span><span class="sc-val">${esc(q.full_name)}</span></div>`);
+  if(q.credit_code)       rows.push(`<div class="sc-row"><span class="sc-lbl">统一信用码</span><span class="sc-val" style="font-size:10px;font-family:monospace">${esc(q.credit_code)}</span></div>`);
+  if(q.legal_person)      rows.push(`<div class="sc-row"><span class="sc-lbl">法人代表</span><span class="sc-val">${esc(q.legal_person)}</span></div>`);
+  if(q.registered_capital)rows.push(`<div class="sc-row"><span class="sc-lbl">注册资本</span><span class="sc-val">${esc(q.registered_capital)}</span></div>`);
+  if(q.paid_capital)      rows.push(`<div class="sc-row"><span class="sc-lbl">实缴资本</span><span class="sc-val">${esc(q.paid_capital)}</span></div>`);
+  if(q.established_date)  rows.push(`<div class="sc-row"><span class="sc-lbl">成立日期</span><span class="sc-val">${esc(q.established_date)}</span></div>`);
+  if(q.business_status)   rows.push(`<div class="sc-row"><span class="sc-lbl">经营状态</span><span class="sc-val">${q.business_status==='存续'?'<span class="badge badge-green">存续</span>':'<span class="badge badge-red">'+esc(q.business_status)+'</span>'}</span></div>`);
+  if(q.org_type)          rows.push(`<div class="sc-row"><span class="sc-lbl">企业类型</span><span class="sc-val">${esc(q.org_type)}</span></div>`);
+  if(q.industry)          rows.push(`<div class="sc-row"><span class="sc-lbl">所属行业</span><span class="sc-val">${esc(q.industry)}</span></div>`);
+  if(q.annual_revenue)    rows.push(`<div class="sc-row"><span class="sc-lbl">年营业额</span><span class="sc-val">${esc(q.annual_revenue)}</span></div>`);
+  if(q.employee_count)    rows.push(`<div class="sc-row"><span class="sc-lbl">员工人数</span><span class="sc-val">${esc(q.employee_count)}</span></div>`);
+  if(q.actual_controller) rows.push(`<div class="sc-row"><span class="sc-lbl">实际控制人</span><span class="sc-val">${esc(q.actual_controller)}</span></div>`);
+  if(q.registered_address)rows.push(`<div class="sc-row"><span class="sc-lbl">注册地址</span><span class="sc-val text-sm">${esc(q.registered_address)}</span></div>`);
+  if(q.business_scope)    rows.push(`<div class="sc-row"><span class="sc-lbl">经营范围</span><span class="sc-val text-sm" style="max-height:48px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(q.business_scope)}</span></div>`);
+  return rows.length ? rows.join('') : '<div class="sc-row"><span class="sc-val text-sm">暂无工商信息</span></div>';
+}
+
+function renderRiskBlock(q){
+  if(!q) return '';
+  const items = [];
+  items.push(`<div class="risk-item"><div class="risk-dot ${q.penalty_count>0?'dot-red':'dot-green'}"></div><span>行政处罚 <strong>${q.penalty_count||0}</strong> 次</span></div>`);
+  items.push(`<div class="risk-item"><div class="risk-dot ${q.lawsuit_count>0?'dot-orange':'dot-green'}"></div><span>法律诉讼 <strong>${q.lawsuit_count||0}</strong> 次</span></div>`);
+  items.push(`<div class="risk-item"><div class="risk-dot ${q.dishonesty_count>0?'dot-red':'dot-green'}"></div><span>失信记录 <strong>${q.dishonesty_count||0}</strong> 次</span></div>`);
+  items.push(`<div class="risk-item"><div class="risk-dot ${q.abnormal_status?'dot-orange':'dot-green'}"></div><span>经营${q.abnormal_status?'异常':'正常'}</span></div>`);
+  const all = `<div class="risk-row">${items.join('')}</div>`;
+  const detail = (q.risk_info||q.abnormal_reason) ? `<div class="sc-row" style="margin-top:4px"><span class="sc-lbl">风险说明</span><span class="sc-val text-sm">${esc(q.risk_info||q.abnormal_reason)}</span></div>` : '';
+  return all + detail;
+}
+
+function renderShareholdersBlock(q){
+  if(!q||!q.shareholders||!q.shareholders.length) return '';
+  const rows = q.shareholders.map(sh=>`<div class="sh-item"><span class="sh-name">${esc(sh.name||sh)}</span><span class="sh-ratio">${esc(sh.ratio||'')}</span></div>`).join('');
+  return `<div class="shareholder-list">${rows}</div>`;
+}
+
+function renderIpBlock(q){
+  if(!q) return '';
+  const parts = [];
+  if(q.patent_count)             parts.push(`专利 <strong>${q.patent_count}</strong>`);
+  if(q.trademark_count)          parts.push(`商标 <strong>${q.trademark_count}</strong>`);
+  if(q.software_copyright_count) parts.push(`软著 <strong>${q.software_copyright_count}</strong>`);
+  if(!parts.length) return '';
+  return `<div style="font-size:12px;color:#1a1a2e;padding:4px 0">${parts.join(' &nbsp;·&nbsp; ')}</div>`;
+}
+
+function renderCertTags(q){
+  if(!q) return '';
+  const certs = [...(q.certifications||[]), ...(q.honors||[])];
+  if(!certs.length) return '';
+  return `<div class="cert-tags">${certs.map(c=>`<span class="cert-tag">${esc(c)}</span>`).join('')}</div>`;
+}
+
+function renderUrlGroup(s){
+  const items = [];
+  if(s.discovery_url) items.push({tag:'发现来源', url: s.discovery_url});
+  if(s.official_url)  items.push({tag:'供应商官网', url: s.official_url});
+  if(s.qcc_url)       items.push({tag:'企查查', url: s.qcc_url});
+  const extra = (s.source_urls||[]).filter(u=>u!==s.discovery_url&&u!==s.official_url&&u!==s.qcc_url);
+  extra.forEach((u,i)=>items.push({tag:`来源${i+1}`, url:u}));
+  if(!items.length) return '<div class="sc-val text-sm">暂无链接</div>';
+  return `<div class="url-group">${items.map(it=>`<div class="url-item"><span class="url-tag">${esc(it.tag)}</span><a class="url-link" href="${escAttr(it.url)}" target="_blank">${esc(it.url)}</a></div>`).join('')}</div>`;
+}
+
+function renderSupplierCard(s){
+  const authBadge = s.is_authorized ? '<span class="badge badge-green">✓ 已授权</span>' : '<span class="badge badge-orange">待核实</span>';
+  const risk = riskLevel(s);
+  const rec  = recBadge(s);
+  const qcc  = s.qcc_info || {};
+
+  return `
+<div class="sc">
+  <div class="sc-header">
+    <div class="sc-name" title="${escAttr(s.name)}">${esc(s.name)}</div>
+    <div class="sc-badges">${authBadge}${risk}${rec}</div>
+  </div>
+  <div class="sc-body">
+
+    <!-- 交易信息 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-blue">💰 交易信息</div>
+      <div class="sc-section-body">
+        <div class="sc-row"><span class="sc-lbl">价格</span><span class="sc-val price">${esc(s.price||s.price_range||'-')}</span></div>
+        ${s.price_range&&s.price?`<div class="sc-row"><span class="sc-lbl">价格区间</span><span class="sc-val">${esc(s.price_range)}</span></div>`:''}
+        <div class="sc-row"><span class="sc-lbl">货期</span><span class="sc-val delivery">${esc(s.delivery||'-')}</span></div>
+        <div class="sc-row"><span class="sc-lbl">库存状态</span><span class="sc-val">${esc(s.stock_status||'-')}</span></div>
+        <div class="sc-row"><span class="sc-lbl">最小起订</span><span class="sc-val">${esc(s.moq||'-')}</span></div>
+        <div class="sc-row"><span class="sc-lbl">结算方式</span><span class="sc-val">${esc(s.payment||'-')}</span></div>
+        <div class="sc-row"><span class="sc-lbl">来源渠道</span><span class="sc-val">${esc(s.source||'-')}</span></div>
+        ${s.authorization_cert?`<div class="sc-row"><span class="sc-lbl">授权证书</span><span class="sc-val text-sm">${esc(s.authorization_cert)}</span></div>`:''}
+      </div>
+    </div>
+
+    <!-- 联系方式 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-green">📞 联系方式</div>
+      <div class="sc-section-body">
+        ${renderContactBlock(s.contact)}
+      </div>
+    </div>
+
+    <!-- 工商信息 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-slate">🏢 工商信息（企查查）</div>
+      <div class="sc-section-body">
+        ${renderQccBlock(qcc)}
+      </div>
+    </div>
+
+    <!-- 风险信息 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-red">⚠️ 风险信息</div>
+      <div class="sc-section-body">
+        ${renderRiskBlock(qcc)}
+      </div>
+    </div>
+
+    ${(qcc.shareholders&&qcc.shareholders.length)?`
+    <!-- 股东信息 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-purple">👥 股东信息</div>
+      <div class="sc-section-body">
+        ${renderShareholdersBlock(qcc)}
+      </div>
+    </div>`:''}
+
+    ${(qcc.patent_count||qcc.trademark_count||qcc.software_copyright_count||((qcc.certifications||[]).length)||((qcc.honors||[]).length))?`
+    <!-- 资质知识产权 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-blue" style="background:#0891b2">🎖 资质 &amp; 知识产权</div>
+      <div class="sc-section-body">
+        ${renderIpBlock(qcc)}
+        ${renderCertTags(qcc)}
+      </div>
+    </div>`:''}
+
+    ${(s.main_products||s.business_years||s.service_policy||s.after_sale)?`
+    <!-- 经营能力 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-slate" style="background:#0f766e">📦 经营能力</div>
+      <div class="sc-section-body">
+        ${s.main_products?`<div class="sc-row"><span class="sc-lbl">主营产品</span><span class="sc-val text-sm">${esc(s.main_products)}</span></div>`:''}
+        ${s.business_years?`<div class="sc-row"><span class="sc-lbl">经营年限</span><span class="sc-val">${esc(s.business_years)}</span></div>`:''}
+        ${s.service_policy?`<div class="sc-row"><span class="sc-lbl">服务政策</span><span class="sc-val text-sm">${esc(s.service_policy)}</span></div>`:''}
+        ${s.after_sale?`<div class="sc-row"><span class="sc-lbl">售后服务</span><span class="sc-val text-sm">${esc(s.after_sale)}</span></div>`:''}
+      </div>
+    </div>`:''}
+
+    <!-- 来源链接 -->
+    <div class="sc-section">
+      <div class="sc-section-title bg-slate" style="background:#7c3aed">🔗 来源链接</div>
+      <div class="sc-section-body">
+        ${renderUrlGroup(s)}
+      </div>
+    </div>
+
+    ${s.notes?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 8px;font-size:11px;color:#92400e">📝 ${esc(s.notes)}</div>`:''}
+
+  </div>
+</div>`;
+}
+
+function renderProduct(p, idx){
+  const specs = p.specs || {};
+  const specKeys = Object.keys(specs);
+
+  let sidebarHtml = `
+<div class="sidebar-section">
+  <div class="sidebar-section-title">基本信息</div>
+  <div class="kv-row"><span class="kv-label">品牌</span><span class="kv-value">${esc(p.brand||'-')}</span></div>
+  <div class="kv-row"><span class="kv-label">型号</span><span class="kv-value" style="font-family:monospace;font-size:12px">${esc(p.model||'-')}</span></div>
+  <div class="kv-row"><span class="kv-label">类型</span><span class="kv-value">${esc(p.type||'-')}</span></div>
+  <div class="kv-row"><span class="kv-label">名称</span><span class="kv-value">${esc(p.name||'-')}</span></div>
+</div>`;
+
+  if(specKeys.length){
+    sidebarHtml += `<div class="sidebar-section">
+  <div class="sidebar-section-title">技术规格</div>
+  <table class="spec-table"><tbody>
+  ${specKeys.map(k=>`<tr><td>${esc(k)}</td><td>${esc(specs[k])}</td></tr>`).join('')}
+  </tbody></table>
+</div>`;
+  }
+
+  if(p.certifications&&p.certifications.length){
+    sidebarHtml += `<div class="sidebar-section">
+  <div class="sidebar-section-title">产品认证</div>
+  <div class="cert-tags">${p.certifications.map(c=>`<span class="cert-tag">${esc(c)}</span>`).join('')}</div>
+</div>`;
+  }
+
+  if(p.images&&p.images.length){
+    sidebarHtml += `<div class="sidebar-section">
+  <div class="sidebar-section-title">产品图片</div>
+  <div class="img-grid">
+  ${p.images.map(img=>`<img src="产品资料/产品图片/${escAttr(img)}" alt="${escAttr(img)}" onclick="openModal(this.src)" loading="lazy" onerror="this.style.display='none'">`).join('')}
+  </div>
+</div>`;
+  } else if(p.image_sources){
+    sidebarHtml += `<div class="sidebar-section">
+  <div class="sidebar-section-title">产品图片</div>
+  <div style="font-size:11px;color:#9ca3af;padding:4px 0">${esc(p.image_sources)}</div>
+</div>`;
+  }
+
+  if(p.applications){
+    sidebarHtml += `<div class="sidebar-section">
+  <div class="sidebar-section-title">应用范围</div>
+  <div style="font-size:11px;color:#374151">${esc(p.applications)}</div>
+</div>`;
+  }
+
+  if(p.source_urls&&p.source_urls.length){
+    sidebarHtml += `<div class="sidebar-section">
+  <div class="sidebar-section-title">来源网址</div>
+  <ul class="url-list">
+  ${p.source_urls.map(u=>`<li><a href="${escAttr(u)}" target="_blank" title="${escAttr(u)}">${esc(u)}</a></li>`).join('')}
+  </ul>
+</div>`;
+  }
+
+  const supplierCards = (p.suppliers||[]).map(s=>renderSupplierCard(s)).join('');
+
+  return `
+<div class="product-block">
+  <div class="product-block-header">
+    <span class="product-block-title">#${idx+1} ${esc(p.brand?p.brand+' ':'')}${esc(p.model||p.name||'未知产品')}</span>
+    <span class="product-block-subtitle">共 ${(p.suppliers||[]).length} 家供应商</span>
+  </div>
+  <div class="product-block-body">
+    <div class="product-sidebar">${sidebarHtml}</div>
+    <div class="supplier-area">
+      <div class="supplier-cards">${supplierCards||'<div style="padding:20px;color:#9ca3af;font-size:12px">暂无供应商数据</div>'}</div>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderLog(log){
+  if(!log||!log.logs||!log.logs.length) return '';
+  const typeMap = {search:'🔍',fetch:'📄',verify:'✔',download:'⬇',save:'💾',note:'📌',error:'❌',result:'✅'};
+  const rows = log.logs.map(l=>`
+<div class="log-item">
+  <span class="log-time">${esc(l.time||'')}</span>
+  <span class="log-type log-type-${esc(l.type||'note')}">${typeMap[l.type]||'•'} ${esc(l.type||'')}</span>
+  <span class="log-msg">${esc(l.message)}${l.source_url?`<a class="log-url" href="${escAttr(l.source_url)}" target="_blank">${esc(l.source_url)}</a>`:''}</span>
+</div>`).join('');
+  return `
+<div class="exec-log-block">
+  <div class="exec-log-header" onclick="toggleLog()">📝 执行过程记录 <span id="logToggleIcon">▼</span></div>
+  <div class="exec-log-body" id="execLogBody">${rows}</div>
+</div>`;
+}
+
+function toggleLog(){
+  const body = document.getElementById('execLogBody');
+  const icon = document.getElementById('logToggleIcon');
+  if(body.style.display==='none'){body.style.display='block';icon.textContent='▼';}
+  else{body.style.display='none';icon.textContent='▶';}
+}
+
+function openModal(src){ document.getElementById('modalImg').src=src; document.getElementById('imgModal').classList.add('open'); }
+function closeModal(){ document.getElementById('imgModal').classList.remove('open'); }
+
+function render(){
+  const now = new Date();
+  document.getElementById('headerMeta').textContent = now.toLocaleString('zh-CN');
+  document.getElementById('footerTime').textContent = '生成时间：' + now.toLocaleString('zh-CN') + '  ·  供应商开发技能自动生成';
+
+  if(!D){ document.getElementById('mainContent').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">暂无数据</div>'; return; }
+
+  document.getElementById('productCount').textContent = D.product_count || 0;
+  document.getElementById('supplierCount').textContent = D.total_suppliers || 0;
+  document.getElementById('authCount').textContent = D.authorized_count || 0;
+  document.getElementById('pendingCount').textContent = D.pending_count || 0;
+
+  let html = '';
+  if(LOG) html += renderLog(LOG);
+  (D.products||[]).forEach((p,i)=>{ html += renderProduct(p,i); });
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
