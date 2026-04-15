@@ -14,14 +14,14 @@
 
 把仓库地址告诉你的 AI：
 
-> "请把这个仓库克隆到你的 skills 目录：git@github.com:shwkea/wkea-skills.git"
+> "请把这个仓库克隆到你的 skills 目录：https://github.com/shwkea/wkea-skills.git"
 
 AI 会自动识别 skill 结构并完成安装。
 
 ### 方式二：手动克隆
 
 ```bash
-git clone git@github.com:shwkea/wkea-skills.git
+git clone https://github.com/shwkea/wkea-skills.git
 # 把 skills 目录下的内容复制到 AI 的 skills 目录
 ```
 
