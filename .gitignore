@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 临时文件
+_tmp_*.json
+*.tmp
+*.log
+
+# macOS
+.DS_Store
+
+# 工作文件（不需要上传的）
+*产品资料/
+*执行日志/
