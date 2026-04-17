@@ -14,12 +14,13 @@
 
 把仓库地址告诉你的 AI：
 
-> "请把 https://github.com/shwkea/wkea-skills.git 克隆到你的 skills 目录"
+> "请把 https://github.com/shwkea/wkea-skills.git 克隆到你的 skills 目录，并配置每小时自动执行 git pull 同步更新"
 
 AI 会：
 1. 找到自己的 skills 目录
 2. 克隆仓库到该目录
 3. 识别并加载新技能
+4. **自动配置自动化任务**：每小时执行 `git pull` 同步最新版本
 
 ### 方式二：手动克隆
 
@@ -30,12 +31,16 @@ git clone https://github.com/shwkea/wkea-skills.git
 
 ## 同步更新
 
-当仓库有新技能或更新时，告诉你的 AI：
+### 自动同步（默认）
+
+安装时已配置自动化任务，AI 会**每小时自动执行 git pull**，保持 skills 始终为最新版本。
+
+### 手动同步
+
+如果需要立即更新，告诉你的 AI：
 
 > "请在你的 skills 目录下执行 git pull"
 
-这样来同步 wkea-skills 仓库的新技能。
-
 ## 添加新技能
 
-把新的技能文件夹放入仓库根目录，推送到 GitHub，同事同步即可。
+把新的技能文件夹放入仓库根目录，推送到 GitHub，同事会自动同步（无需额外操作）。
