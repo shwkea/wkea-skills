@@ -1,9 +1,11 @@
 # 供应商开发技能
 
 ## 概述
+
 本技能用于自动化执行供应商开发流程，支持单产品和多产品并发处理。通过全网搜索供应商、按核查清单逐项验证、结构化输出结果（JSON 驱动）。
 
 ## 触发条件
+
 当用户提到以下关键词时触发：
 - "供应商开发"
 - "找供应商"
@@ -14,10 +16,13 @@
 
 ## ⚡ 核心加速原则：AI 只负责"检索 + 提取 + 验证"，写文件全部交给脚本
 
+> **🚨 强制要求：所有文件写入必须调用脚本，禁止 AI 直接 write_to_file 🚨**
+
 **禁止 AI 做的事（慢）：**
-- ❌ 手动写 JSON 文件（write_to_file）
-- ❌ 手动编辑 HTML 报告
-- ❌ 手动拼接供应商数据后写进文件
+- ❌ **手动写 JSON 文件**（write_to_file）- 改用 `save_*.py` 脚本
+- ❌ **手动写 HTML 代码**（write_to_file）- 改用 `generate_html.py` 脚本
+- ❌ **手动拼接供应商数据后写进文件** - 改用 `collect_suppliers.py`
+- ❌ 使用 fetch() 读取本地 JSON 文件 - 改用脚本读取
 
 **AI 应该做的事（快）：**
 - ✅ 调用 `web_search` 搜索供应商
@@ -25,6 +30,15 @@
 - ✅ 从页面内容中提取结构化字段（公司名、联系方式、企查查信息等）
 - ✅ 把提取到的数据用 `execute_command` 一行命令传给脚本，脚本写文件
 - ✅ 每次操作后调用 `save_execution_log.py` 追加日志条目
+
+**典型错误示例：**
+```
+❌ 错误：AI直接write_to_file写JSON/HTML
+✅ 正确：execute_command调用python脚本生成
+
+❌ 错误：让AI分析JSON后手动拼接HTML
+✅ 正确：调用collect_suppliers.py再调用generate_html.py
+```
 
 **标准节奏（每个供应商）：**
 1. 搜索 → `save_execution_log.py search ...`
@@ -38,37 +52,228 @@
 ## 执行流程
 
 ### 1. 解析产品信息
-- 解析用户提供的产品信息（单个或多个）
-- 提取关键搜索关键词
-- 识别产品类型和技术规格
 
-### 2. 创建根目录
+**第一步：提取Excel原始文本（必须）**
+```bash
+# 读取Excel全部原始文本，不做解析
+python scripts/data/read_excel_raw.py <Excel文件路径> [sheet_name]
+
+# 示例
+python scripts/data/read_excel_raw.py 2604179085-6.xlsx 询价格式
+```
+
+**read_excel_raw.py 输出结构：**
+- `total_rows`, `total_cols`: 表格维度
+- `cells`: 所有非空单元格（row/col/value）
+- `rows`: 按行组织的内容（便于AI理解表格结构）
+- `raw_head`: 第1行原始内容
+
+**第二步：AI分析原始数据（必须）**
+
+读取 `read_excel_raw.py` 的输出JSON，AI需要：
+
+1. **识别表格结构**
+   - 从 `rows` 中找到表头行（通常包含"序号"、"品牌"、"产品名称"等关键词）
+   - 确定各列含义和位置
+
+2. **提取所有产品**
+   - 遍历 `rows` 中表头之后的所有行
+   - **判断依据：有数字序号行、或能识别为产品数据的行**
+   - **品牌可以为空**，但产品名称不能为空
+   - 提取字段：序号、品牌、产品名称、规格、数量、单位、备注、申请人
+   - **保留原文**，不修改用户输入
+
+3. **输出标准格式**
+   将提取结果按以下JSON格式输出（供后续脚本使用）：
+   ```json
+   {
+     "total": 29,
+     "products": [
+       {
+         "seq": 1,
+         "brand": "中国良工阀门",
+         "product": "手动蝶阀带回信器一套",
+         "spec": "型号Z011-A，规格DN100（必须带回信器）",
+         "qty": 3,
+         "unit": "套",
+         "note": "要求最短货期",
+         "requester": "袁士标"
+       }
+     ]
+   }
+   ```
+
+**灵活性设计：**
+- AI自己判断表格格式，不依赖硬编码的列位置
+- 即使Excel格式变化（换列、增删列、多级表头），只要能找到产品数据就能处理
+- 无法确定时，按"有数字序号行"作为最基本判断依据
+
+### 2. 创建根目录并生成执行计划（重要！）
+
 ```
 工作区/供应商开发_[日期]_[时间戳]/
 ```
 - 日期格式：YYYYMMDD，时间戳：HHMMSS
 - 示例：`供应商开发_20260415_101200/`
-- 调用：`python scripts/core/init.py <根目录路径> <产品型号>`
+- 调用：`python scripts/core/init.py <根目录路径> <产品数量>`
+
+### 2.1 生成批量执行计划（必须在提取完全部产品后立即执行！）
+
+**为什么需要Plan机制：**
+- 批量供应商开发是长任务，需要分阶段执行
+- 需要清晰知道还有多少产品待处理、优先级如何
+- 需要跟踪每个产品的执行状态，避免重复或遗漏
+- 用户可能中途停止或切换任务，需要能从断点恢复
+
+**执行时机：**
+> **必须在第一次识别完全部产品后立即生成Plan，不能跳过！**
+
+**生成计划：**
+```bash
+python scripts/core/batch_plan.py <根目录> init '<JSON产品列表>'
+```
+
+**批量计划输出内容：**
+- 统计摘要：产品总数、无品牌产品数、紧急产品数（最短货期）
+- 按品牌分组的产品列表
+- 5个执行阶段：提取产品→制定计划→并发搜索→企查查核查→汇总报告
+- 执行顺序策略：优先级优先（最短货期 > 无供应商 > 已有供应商少）
+- 日志记录
+
+**执行过程中查询：**
+```bash
+# 查看完整计划
+python scripts/core/batch_plan.py <根目录> view
+
+# 查看执行状态
+python scripts/core/batch_plan.py <根目录> status
+
+# 获取下一个待处理产品（按优先级）
+python scripts/core/batch_plan.py <根目录> next
+
+# 更新产品状态
+python scripts/core/batch_plan.py <根目录> update_product '<JSON数据>'
+```
+
+**每个产品完成后：**
+- 调用 `update_product` 更新状态为 `completed`
+- 记录找到的供应商数量
+- 继续用 `next` 获取下一个产品
 
 ### 3. 并发执行（多产品支持）
 
-**单产品模式：** 直接执行单个产品的完整流程
+> **🚀 推荐：使用 WorkBuddy Team 模式实现真正的并发处理**
 
-**多产品模式：**
+**核心改进：每个产品一个子任务，避免长任务丢失**
+
+#### 执行架构
+
 ```
-主任务：批量供应商开发
-├── 子任务1：产品A 供应商开发
-├── 子任务2：产品B 供应商开发
-└── ...
+主控（当前AI）                    Team 子代理们
+    │                              │
+    ├─ batch_plan.py init          │
+    ├─ 分组待处理产品               │
+    ├─ team_create                 │
+    │                              │
+    ├─ task(worker-1) ──────────────┼── 每个子代理处理 1 个产品
+    ├─ task(worker-2) ──────────────┼── 完成后报告给主控
+    ├─ task(worker-3) ──────────────┼──
+    └─ ...                         │
 ```
 
-每个子任务独立执行：
-1. 初始化产品文件夹（`init.py`）
-2. 保存产品信息（`save_product.py`）
-3. 全网搜索供应商并逐个核实
-4. 保存每个供应商（`save_supplier.py`）
-5. 每步记录日志（`save_execution_log.py`）
-6. 汇总并生成 HTML（`collect_suppliers.py` → `generate_html.py`）
+#### 推荐执行流程
+
+**步骤1：初始化并获取任务列表**
+```bash
+# 生成执行计划（如果还没有）
+python scripts/core/batch_plan.py <根目录> init '<产品JSON>'
+
+# 查看状态
+python scripts/core/batch_plan.py <根目录> status
+
+# 获取下一批待处理产品（最多3个）
+python scripts/core/main_controller.py <根目录> batch 3
+```
+
+**步骤2：创建 Team 并启动子代理**
+```python
+# 创建团队
+team_create(team_name="supplier-dev-{日期}")
+
+# 启动子代理（每个处理1个产品）
+task(name="w1", team_name="supplier-dev-xxx",
+     prompt="执行供应商开发任务...\n产品信息: {product_info}")
+
+task(name="w2", team_name="supplier-dev-xxx",
+     prompt="执行供应商开发任务...\n产品信息: {product_info}")
+
+task(name="w3", team_name="supplier-dev-xxx",
+     prompt="执行供应商开发任务...\n产品信息: {product_info}")
+```
+
+**步骤3：子代理工作提示词模板**
+
+```
+# 子任务：供应商开发（产品 {product_id}）
+
+## 基本信息
+- 工作目录: {workspace}
+- 技能目录: {skill_dir}
+- 产品: {brand} {product} {spec}
+- 数量: {qty} {unit}
+- 备注: {note}
+
+## 执行步骤
+
+1. **初始化目录**
+   ```bash
+   mkdir -p "{workspace}/{product_folder}"
+   python "{skill_dir}/scripts/core/init.py" "{workspace}/{product_folder}" 1
+   ```
+
+2. **保存产品信息**（创建临时JSON文件后调用脚本）
+
+3. **搜索供应商**（至少5家）
+   - 使用 web_search 搜索
+   - 每次搜索调用 save_execution_log.py
+
+4. **核实供应商**（每个供应商）
+   - web_fetch 打开页面
+   - 企查查查询工商信息
+   - 调用 save_supplier.py 保存
+
+5. **生成报告**
+   ```bash
+   python "{skill_dir}/scripts/data/collect_suppliers.py" "{product_folder}"
+   python "{skill_dir}/scripts/report/generate_html.py" "{product_folder}"
+   ```
+
+6. **更新状态并报告**
+   - 更新 batch_plan.json 中该产品状态为 completed
+   - send_message(recipient="main", content="产品{product_id}完成，{supplier_count}家供应商")
+
+## 重要约束
+- 所有文件写入必须通过脚本，禁止直接 write_to_file
+- 每个供应商必须企查查核查
+- 完成后必须向主控报告
+```
+
+**并发执行脚本：**
+```bash
+# 查看并发计划（会生成 parallel_plan.json）
+python scripts/core/parallel_executor.py <根目录> plan [最大并发数]
+
+# 主控状态查询
+python scripts/core/main_controller.py <根目录> status
+
+# 获取下一批任务
+python scripts/core/main_controller.py <根目录> batch 3
+```
+
+**执行示例（30个产品）：**
+- 并发数 3，每次处理 3 个产品 → 10 轮完成
+- 理论上比串行快 3 倍
+- 建议 batch 大小设为 3-5（避免子代理过多导致混乱）
 
 ### 4. 产品文件夹结构
 
@@ -150,18 +355,26 @@
 
 ## 脚本调用总表
 
+> **🚨 所有文件写入必须通过脚本，禁止 AI 直接 write_to_file 🚨**
+
 AI 只调脚本，不手动写文件。所有脚本均位于技能目录 `scripts/` 下。
 
 | 脚本路径 | 用途 | 关键参数 |
 |---------|------|---------|
-| `scripts/core/init.py` | 初始化文件夹结构 | `<根目录> <产品型号>` |
-| `scripts/core/update_plan.py` | 更新执行计划进度 | `<产品目录> <步骤> <状态>` |
-| `scripts/data/save_product.py` | 保存产品信息到 product.json | `<产品目录> <JSON字符串>` |
-| `scripts/data/save_supplier.py` | 保存供应商信息到 info.json | `<产品目录> <JSON字符串>` |
+| `scripts/data/read_excel_raw.py` | **提取Excel原始文本（AI分析用）** | `<Excel路径> [sheet_name]` |
+| `scripts/data/read_excel.py` | 从Excel读取产品列表（结构化） | `<Excel路径> [输出JSON]` |
+| `scripts/core/init.py` | 初始化文件夹结构 | `<根目录> <产品数量>` |
+| `scripts/core/batch_plan.py` | 批量执行计划管理 | `<根目录> <init/view/next/status/update_product>` |
+| `scripts/core/main_controller.py` | **Team模式主控脚本** | `<根目录> status/batch/update` |
+| `scripts/core/worker_executor.py` | 子代理执行器（单产品） | `<工作目录> <产品JSON>` |
+| `scripts/core/parallel_executor.py` | 并发执行规划 | `<根目录> plan/execute [最大并发数]` |
+| `scripts/core/update_plan.py` | 更新单个产品计划进度 | `<产品目录> <步骤> <状态>` |
+| `scripts/data/save_product.py` | 保存产品信息到 product.json | `<产品目录> --file <JSON文件>` |
+| `scripts/data/save_supplier.py` | 保存供应商信息到 info.json | `<产品目录> --file <JSON文件>` |
 | `scripts/data/save_execution_log.py` | 追加日志条目 | `<产品目录> <类型> <消息> [URL]` |
 | `scripts/data/collect_suppliers.py` | 汇总所有 info.json → suppliers.json | `<产品目录>` |
 | `scripts/data/export_excel.py` | 导出 Excel | `<产品目录>` |
-| `scripts/report/generate_html.py` | 生成 HTML 报告 | `<产品目录或根目录>` |
+| `scripts/report/generate_html.py` | **生成 HTML 报告（必须用此脚本）** | `<产品目录或根目录>` |
 
 ### save_execution_log.py 操作类型说明
 
@@ -315,3 +528,9 @@ python scripts/report/generate_html.py <产品文件夹绝对路径>
 - save_product.py / save_supplier.py / Windows PowerShell：无法通过 argv 直接传 JSON 字符串（引号被 shell 解析），必须先写临时 `_tmp_xxx.json` 文件，再用 `--file <路径>` 参数传入。两个脚本已支持 `--file` 参数。
 - init.py：第二个参数是产品数量（int），不是产品型号。产品型号是第一个参数，数量是可选的第二个参数。
 - generate_html.py：默认只透传少量供应商字段，已升级为 `dict(s)` 完整透传，产品信息也增加了 specs/certifications/applications/category 字段透传。
+- read_excel.py / Excel读取产品数量：Excel中有些产品品牌列为空（如序号13、28），但产品名称有内容。判断有效行的条件是"有序号或有产品名称"，品牌可为空。原先用 `brand is not None` 判断导致漏掉两个产品。
+- **Team并发模式 / 子代理丢失问题**：子代理一次处理多个产品容易超时丢失。解决方案：
+  1. 每个子代理只处理 **1个产品**，处理完报告主控，再接收下一个
+  2. 主控用 `batch_plan.json` 跟踪状态，子代理只负责更新自己产品的状态
+  3. 使用 `main_controller.py batch N` 获取下一批N个产品，逐个分配
+- **Team并发模式 / 子代理不写文件问题**：子代理调用脚本时路径必须用绝对路径，不能用相对路径。建议在prompt中明确写出完整命令。
