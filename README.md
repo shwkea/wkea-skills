@@ -14,9 +14,12 @@
 
 把仓库地址告诉你的 AI：
 
-> "请把这个仓库克隆到你的 skills 目录：https://github.com/shwkea/wkea-skills.git"
+> "请把 https://github.com/shwkea/wkea-skills.git 克隆到你的 skills 目录"
 
-AI 会自动识别 skill 结构并完成安装。
+AI 会：
+1. 找到自己的 skills 目录
+2. 克隆仓库到该目录
+3. 识别并加载新技能
 
 ### 方式二：手动克隆
 
@@ -27,9 +30,11 @@ git clone https://github.com/shwkea/wkea-skills.git
 
 ## 同步更新
 
-告诉你的 AI：
+当仓库有新技能或更新时，告诉你的 AI：
 
-> "请把 wkea-skills 拉到最新"
+> "请在你的 skills 目录下执行 git pull"
+
+这样来同步 wkea-skills 仓库的新技能。
 
 ## 添加新技能
 
