@@ -41,6 +41,14 @@ git clone https://github.com/shwkea/wkea-skills.git
 
 > "请在你的 skills 目录下执行 git pull"
 
+### 为已安装的用户配置自动同步
+
+如果你是早期用户，还没有配置自动同步，告诉你的 AI：
+
+> "请在我的 skills 目录下配置自动化任务，每小时执行一次 git pull 同步 wkea-skills 仓库"
+
+AI 会自动配置每小时自动同步，无需手动操作。
+
 ## 添加新技能
 
 把新的技能文件夹放入仓库根目录，推送到 GitHub，同事会自动同步（无需额外操作）。
